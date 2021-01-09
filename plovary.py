@@ -195,7 +195,7 @@ class Chord(object):
 
     @property
     def plover_str(self) -> str:
-        return self._to_str(reverse_digit_keys)
+        return self._to_str(reverse_digit_keys if "#" in self else {})
 
     def __repr__(self) -> str:
         return f"Chord({self.keys!r})"
@@ -359,20 +359,20 @@ def to_input(x: Union[str, Chord, Input]) -> Input:
 
 
 class Dictionary(object):
-    elements: Dict[Input, str]
+    entries: Dict[Input, str]
 
-    def __init__(self, elements: Dict[Input, str]) -> None:
-        self.elements = elements
+    def __init__(self, entries: Dict[Input, str]) -> None:
+        self.entries = entries
 
     def copy(self) -> 'Dictionary':
-        return Dictionary(self.elements.copy())
+        return Dictionary(self.entries.copy())
 
     def cross_product(
         self,
         other: 'Dictionary',
         *,
-        key: Callable[[Input, Input], Input]=concat_inputs,
-        value: Callable[[str, str], str]=lambda l, r: l + r,
+        keys: Callable[[Input, Input], Input]=concat_inputs,
+        values: Callable[[str, str], str]=lambda l, r: l + r,
     ) -> 'Dictionary':
         K = TypeVar("K")
         V = TypeVar("V")
@@ -386,18 +386,18 @@ class Dictionary(object):
             return out
 
         return Dictionary(checked_dict(
-            (key(k1, k2), value(v1, v2))
-            for k1, v1 in self.elements.items()
-            for k2, v2 in other.elements.items()
+            (keys(k1, k2), values(v1, v2))
+            for k1, v1 in self.entries.items()
+            for k2, v2 in other.entries.items()
         ))
 
     def keys_for(self, value: str) -> List[Input]:
-        return [k for k, v in self.elements.items() if v == value]
+        return [k for k, v in self.entries.items() if v == value]
 
     def to_plover_dict(self) -> Dict[str, str]:
         return {
             "/".join(i.plover_str for i in k): v
-            for k, v in self.elements.items()
+            for k, v in self.entries.items()
         }
 
     def map(
@@ -408,12 +408,47 @@ class Dictionary(object):
     ) -> 'Dictionary':
         return Dictionary({
             keys(k): values(v)
-            for k, v in self.elements.items()
+            for k, v in self.entries.items()
         })
 
+    def with_asterisk(self) -> 'Dictionary':
+        return self.map(
+            keys=lambda x: (
+                (x[0].combine_nonoverlapping(chord(only=asterisk)),) + x[1:]
+            ),
+        )
+
+    def print_as_plover_json_dict(self) -> None:
+        import json
+        print(json.dumps(self.to_plover_dict()))
+
+    def longest_key(self) -> int:
+        return max(len(i) for i in self.entries.keys())
+
+    def plover_lookup(self, key: Tuple[str, ...]) -> str:
+        return self[tuple(Chord.parse(i) for i in key)]
+
+    def plover_reverse_lookup(self, output: str) -> List[Tuple[str, ...]]:
+        return [tuple(j.plover_str for j in i) for i in self.keys_for(output)]
+
+    def install_as_plover_python_dict(self, mod_globals: Dict[str, Any]) -> None:
+        mod_globals["LONGEST_KEY"] = self.longest_key()
+        mod_globals["lookup"] = lambda x: self.plover_lookup(x)
+        mod_globals["reverse_lookup"] = lambda x: self.plover_reverse_lookup(x)
+
+    def plover_dict_main(self, name: str, mod_globals: Dict[str, Any]) -> None:
+        if name == "__main__":
+            import sys
+            if "--debug" in sys.argv:
+                print(self)
+            else:
+                self.print_as_plover_json_dict()
+        else:
+            self.install_as_plover_python_dict(mod_globals)
+
     def __add__(self, other: 'Dictionary') -> 'Dictionary':
-        out = self.elements.copy()
-        for k, v in other.elements.items():
+        out = self.entries.copy()
+        for k, v in other.entries.items():
             if k in out:
                 assert out[k] == v
             out[k] = v
@@ -421,7 +456,7 @@ class Dictionary(object):
         return Dictionary(out)
 
     def __sub__(self, other: Iterable[Input]) -> 'Dictionary':
-        out = self.elements.copy()
+        out = self.entries.copy()
 
         for i in other:
             try:
@@ -435,16 +470,16 @@ class Dictionary(object):
         return Dictionary(out)
 
     def __getitem__(self, key: Union[str, Chord, Input]) -> str:
-        return self.elements[to_input(key)]
+        return self.entries[to_input(key)]
 
     def __setitem__(self, key: Union[str, Chord, Input], value: str) -> None:
-        self.elements[to_input(key)] = value
+        self.entries[to_input(key)] = value
 
     def __repr__(self) -> str:
         return "Dictionary(\n{})".format(
             "".join(
                 "  {}: {!r},\n".format("/".join(str(i) for i in k), v)
-                for k, v in self.elements.items()
+                for k, v in self.entries.items()
             )
         )
 
@@ -461,14 +496,6 @@ def dictionary(
 ) -> Dictionary:
     dict_items = items.items() if isinstance(items, dict) else items
     return Dictionary({to_input(k): v for k, v in dict_items})
-
-
-def dict_with_asterisk(dictionary: Dictionary) -> Dictionary:
-    return dictionary.map(
-        keys=lambda x: (
-            (x[0].combine_nonoverlapping(chord(only=asterisk)),) + x[1:]
-        ),
-    )
 
 
 # A few default dictionaries:
@@ -488,7 +515,7 @@ double_digit_only = dictionary(
 ) + dictionary((Chord.digit(i) + "-D", str(i) * 2) for i in range(10))
 hundred00 = dictionary({to_dict_key("0D"): "100"})
 double_digit_only_hundred00 = (
-    double_digit_only - hundred00.elements.keys() + hundred00
+    double_digit_only - hundred00.entries.keys() + hundred00
 )
 hundred1z = dictionary({to_dict_key("1-Z"): "100"})
 double_digit_only_hundred1z = double_digit_only + hundred1z
@@ -542,11 +569,9 @@ fingertyping_uppercase_p_no_asterisk = (
 fingertyping_no_asterisk = (
     fingertyping_lowercase_no_asterisk + fingertyping_uppercase_p_no_asterisk
 )
-fingertyping_lowercase = dict_with_asterisk(fingertyping_lowercase_no_asterisk)
-fingertyping_uppercase_no_p = dict_with_asterisk(
-    fingertyping_uppercase_no_p_no_asterisk
+fingertyping_lowercase = fingertyping_lowercase_no_asterisk.with_asterisk()
+fingertyping_uppercase_no_p = (
+    fingertyping_uppercase_no_p_no_asterisk.with_asterisk()
 )
-fingertyping_uppercase_p = dict_with_asterisk(
-    fingertyping_uppercase_p_no_asterisk
-)
-fingertyping = dict_with_asterisk(fingertyping_no_asterisk)
+fingertyping_uppercase_p = fingertyping_uppercase_p_no_asterisk.with_asterisk()
+fingertyping = fingertyping_no_asterisk.with_asterisk()

@@ -92,7 +92,7 @@ class Chord(object):
                 del left[0]
                 out.add(key)
 
-        for i in left_keys + left_middle_keys:
+        for i in [number_bar] + left_keys + left_middle_keys:
             try_consume(i)
 
         if left and left[0] == "-":

@@ -426,7 +426,20 @@ class Dictionary(object):
         return max(len(i) for i in self.entries.keys())
 
     def plover_lookup(self, key: Tuple[str, ...]) -> str:
-        return self[tuple(Chord.parse(i) for i in key)]
+        """
+        This ignores any and all `ValueError`s due to invalid
+        keys!
+
+        These should only occur if this is used by the Plover
+        Python dictionary plugin when Plovary has a bug, but a
+        bug in Plovary shouldn't pull Plover down with it.
+        """
+
+        try:
+            return self[tuple(Chord.parse(i) for i in key)]
+        except ValueError as e:
+            print(e)
+            raise KeyError
 
     def plover_reverse_lookup(self, output: str) -> List[Tuple[str, ...]]:
         return [tuple(j.plover_str for j in i) for i in self.keys_for(output)]

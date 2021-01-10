@@ -13,7 +13,7 @@ number_bar: Final[Key] = "#"
 asterisk: Final[Key] = "*"
 
 left_keys: Final[List[Key]] = ["S", "T", "K", "P", "W", "H", "R"]
-left_middle_keys: Final[List[Key]] = ["A", "O", "*"]
+left_middle_keys: Final[List[Key]] = ["A", "O", asterisk]
 right_middle_keys: Final[List[Key]] = ["E", "U"]
 middle_keys: Final[List[Key]] = left_middle_keys + right_middle_keys
 right_keys: Final[List[Key]] = [

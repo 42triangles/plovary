@@ -102,7 +102,7 @@ class Chord(object):
             try_consume(i)
 
         if set(chord) & set(digit_keys.keys()):
-            out.add("#")
+            out.add(number_bar)
 
         hyphen_maybe_missing = (
             "-" not in chord and  # there is no hyphen
@@ -125,7 +125,7 @@ class Chord(object):
         if not (0 <= value < 10):
             raise ValueError(f"{value} is not a single digit")
 
-        return chord("#", digit_keys[cast(Digit, str(value))], ty=cls)
+        return chord(number_bar, digit_keys[cast(Digit, str(value))], ty=cls)
 
     @classmethod
     def empty(cls: Type[ChordCls]) -> ChordCls:
@@ -174,7 +174,11 @@ class Chord(object):
             part_to_str(right_keys)
         )
 
-        return ("#" if "#" in self and not used_move else "") + out
+        number_bar_prefix = (
+            number_bar if number_bar in self and not used_move else ""
+        )
+
+        return number_bar_prefix + out
 
     def overlaps(self, other: 'Chord') -> bool:
         return bool(self.keys & other.keys)
@@ -195,7 +199,7 @@ class Chord(object):
 
     @property
     def plover_str(self) -> str:
-        return self._to_str(reverse_digit_keys if "#" in self else {})
+        return self._to_str(reverse_digit_keys if number_bar in self else {})
 
     def __repr__(self) -> str:
         return f"Chord({self.keys!r})"
@@ -288,7 +292,7 @@ def chord(
         assert only in all_keys or only in digit_keys
 
         if only in digit_keys:
-            return chord("#", cast(Digit, only), ty=converted_ty)
+            return chord(number_bar , cast(Digit, only), ty=converted_ty)
         else:
             return converted_ty(frozenset((cast(Key, only),)))
     elif kwargs:  # `chord(chord=....)`

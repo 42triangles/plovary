@@ -1,13 +1,16 @@
 from typing import *
 from plovary import *
 
-suffix = chord("-LGDZ")
+# "English Single Chord DICTionary"
+ESCDict = Dictionary[Chord[EnglishSystem], str]
+
+shared = system.parse("-LGDZ")
 # only isn't needed here, but this way `mypy` checks that this
 # is really just a single correct key:
-add_y = chord(only="-F")
-submit = chord(only="-R")
-add_tu = chord(only="-P")
-add_n = chord(only="-B")
+add_y = system.chord("-F")
+submit = system.chord("-R")
+add_tu = system.chord("-P")
+add_n = system.chord("-B")
 
 # Everything is done in combinations of two
 # * Space for a consonant means no consonant
@@ -17,23 +20,17 @@ add_n = chord(only="-B")
 # * "nn" is an n without a vowel
 # * "--" is the katakana elongation thingy
 
-small_tu = dictionary({
-    to_dict_key(add_tu): "xu",
-})
+small_tu = Dictionary({add_tu: "xu"})
 
-n = dictionary({
-    to_dict_key(add_n): "nn",
-})
+n = Dictionary({add_n: "nn"})
 
 # This is only available in Katakana mode, so the asterisk is
 # there, even in IME mode (where Katakana mode only consists of
 # this, because I have yet to figure out how to give `ibus`
 # katakana explicitly)
-katakana_elongate = dictionary({
-    to_dict_key("AOEU"): "--",
-})
+katakana_elongate = system.parsed_single_dict({"AOEU": "--"})
 
-normal_consonants = dictionary(
+normal_consonants = Dictionary(
     (fingertyping_lowercase_no_asterisk.keys_for(k)[0], k)
     for k in [
         "k", "g",
@@ -49,43 +46,34 @@ normal_consonants = dictionary(
     ]
 )
 
-no_consonant = dictionary({to_dict_key(Chord.empty()): " "})
+no_consonant = Dictionary({system.empty_chord: " "})
 
-y_consonants = normal_consonants.map(
-    keys=combine_first_chord(add_y),
-    values=lambda x: x + "il",
-)
+y_consonants = normal_consonants.map(keys=add(add_y), values=suffix("il"))
 
-special_consonants = dictionary({
-    to_dict_key("SH"): "si",  # sh
+special_consonants = system.parsed_single_dict({
+    "SH": "si",  # sh
     "KH": "ti",  # ch
     "TP": "hu",  # f
     "SKWR": "zi",  # j
 })
 
-vowels = dictionary(
+vowels = Dictionary(
     (fingertyping_lowercase_no_asterisk.keys_for(k)[0], k)
     for k in ["a", "i", "u", "e", "o"]
-) + dictionary({
-    to_dict_key("AE"): "a a",
+) + system.parsed_single_dict({
+    "AE": "a a",
     "AOE": "i i",
     "AOU": "u u",
     "AEU": "e i",
     "OU": "o u",
 })
 
-simple_consonants = (
-    normal_consonants + no_consonant + y_consonants
-)
+simple_consonants = normal_consonants + no_consonant + y_consonants
 
-simple_combinations = simple_consonants.cross_product(
-    vowels,
-    keys=combine_single_chords,
-)
+simple_combinations = simple_consonants * vowels
 
-special_combinations = special_consonants.cross_product(
+special_combinations = special_consonants.combinations(
     vowels,
-    keys=combine_single_chords,
     values=lambda cv, v: (
         cv + v[1:]
         if cv.endswith(v[0])
@@ -96,25 +84,17 @@ special_combinations = special_consonants.cross_product(
 combinations = simple_combinations + special_combinations
 
 extended_combinations = (
-    (
-        small_tu + dictionary({to_dict_key(Chord.empty()): ""})
-    ).cross_product(
-        combinations,
-        keys=combine_single_chords,
-    ) + small_tu
-).cross_product(
-    n + dictionary({to_dict_key(Chord.empty()): ""}),
-    keys=combine_single_chords,
-) + n
-
-katakana_combinations = (
-    extended_combinations + katakana_elongate
+    (small_tu.with_empty_chord() * combinations + small_tu) *
+    n.with_empty_chord() +
+    n
 )
 
+katakana_combinations = extended_combinations + katakana_elongate
+
 def translate(
-    dictionary: Dictionary,
+    dictionary: ESCDict,
     symbol_mapping: Callable[[str], str]
-) -> Dictionary:
+) -> ESCDict:
     def value_mapping(output: str) -> str:
         assert len(output) % 2 == 0
 
@@ -125,7 +105,7 @@ def translate(
 
     return dictionary.map(values=value_mapping)
 
-def handle_ime() -> Dictionary:
+def handle_ime() -> ESCDict:
     def translate_symbol(symbol: str) -> str:
         symbol = (
             "ltu"
@@ -148,18 +128,11 @@ def handle_ime() -> Dictionary:
     # We don't put anything on the asterisk except the
     # elongating thingy for katakana
     return translate(
-        extended_combinations +
-            katakana_elongate.with_asterisk(),
+        extended_combinations + katakana_elongate.map(keys=add("*")),
         translate_symbol,
-    ).cross_product(
-        dictionary({
-            to_dict_key(submit): "a{^}{#Backspace}{^ ^}",
-            Chord.empty(): "",
-        }),
-        keys=combine_single_chords,
-    )
+    ) * system.toggle(submit, "a{^}{#Backspace}{^ ^}")
 
-def handle_proper() -> Dictionary:
+def handle_proper() -> ESCDict:
     vowel_order = {
         "a": 0,
         "i": 1,
@@ -224,25 +197,16 @@ def handle_proper() -> Dictionary:
         return translate_symbol
 
     return (
-        translate(
-            extended_combinations,
-            translation_for(hiragana),
-        ) +
+        translate(extended_combinations, translation_for(hiragana)) +
         translate(
             extended_combinations + katakana_elongate,
             translation_for(katakana),
-        ).with_asterisk()
-    ).cross_product(
-        dictionary({
-            to_dict_key(submit): "",
-            Chord.empty(): "",
-        }),
-        keys=combine_single_chords,
-    )
+        ).map(keys=add("*"))
+    ) * system.toggle(submit, "")  # Make submit do nothing here
 
-def finalize(dictionary: Dictionary) -> Dictionary:
+def finalize(dictionary: ESCDict) -> ESCDict:
     return dictionary.map(
-        keys=combine_first_chord(suffix),
+        keys=add(shared),
         values=lambda x: "{^}" + x + "{^}",
     )
 

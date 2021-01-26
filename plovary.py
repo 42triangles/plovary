@@ -726,6 +726,48 @@ class Dictionary(Generic[K, V]):
     def keys_for(self, value: V) -> List[K]:
         return [k for k, v in self.dict.items() if v == value]
 
+    @overload
+    def with_empty_chord(
+        self: 'Dictionary[Chord[SystemT], V]',
+        default: V,
+        *,
+        system: Optional[SystemT]=None,
+    ) -> 'Dictionary[Chord[SystemT], V]': ...
+    @overload
+    def with_empty_chord(
+        self: 'Dictionary[Chord[SystemT], str]',
+        default: str="",
+        *,
+        system: Optional[SystemT]=None,
+    ) -> 'Dictionary[Chord[SystemT], V]': ...
+    def with_empty_chord(
+        self: 'Dictionary[Chord[SystemT], V]',
+        default: Any="",
+        *,
+        system: Optional[SystemT]=None,
+    ) -> 'Dictionary[Chord[SystemT], V]':
+        """
+        Limitation: the dictionary cannot be empty, otherwise
+        the system cannot be inferred
+        """
+        inferred_system: SystemT
+        if system is not None:
+            inferred_system = system
+        else:
+            try:
+                inferred_system = next(
+                    i.system
+                    for i in self.keys()
+                )
+            except StopIteration:
+                raise ValueError(
+                    "Cannot infer the system of an empty " +
+                    "dictionary"
+                )
+        return self + Dictionary({
+            inferred_system.empty_chord: default
+        })
+
     # Suggested key maps:
     # * `Chord.to_multi_chord` / `to_multi_chord`
     # * `chord.combine` / `add(chord)` / `add(key)`

@@ -365,6 +365,36 @@ class System(object):
     ) -> 'Dictionary[Tuple[Chord[SystemT], ...], T]':
         return Dictionary((self.parse_many(k), v) for k, v in dict_.items())
 
+    @overload
+    def toggle(
+        self: SystemT, key: Union[str, 'Chord[SystemT]'],
+        value: T,
+        *,
+        default: T
+    ) -> 'Dictionary[Chord[SystemT], T]': ...
+    @overload
+    def toggle(
+        self: SystemT,
+        key: Union[str, 'Chord[SystemT]'],
+        value: str,
+        *,
+        default: str=""
+    ) -> 'Dictionary[Chord[SystemT], str]': ...
+    def toggle(
+        self: SystemT,
+        key: Union[str, 'Chord[SystemT]'],
+        value: T,
+        *,
+        default: Any=""
+    ) -> 'Dictionary[Chord[SystemT], T]':
+        as_chord = (
+            key if isinstance(key, Chord) else self.parse(key)
+        )
+        return Dictionary({
+            as_chord: value,
+            self.empty_chord: default,
+        })
+
     def __repr__(self) -> str:
         if self.name is not None:
             return f"System(name={self.name!r})"

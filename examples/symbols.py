@@ -4,8 +4,8 @@ if path not in sys.path: sys.path.append(path)
 
 from plovary import *
 
-symbols = dictionary({
-    to_dict_key("STKPWO"): "#",
+symbols = system.parsed_single_dict({
+    "STKPWO": "#",
     "SHRE": ":",
     "SHR-": "$",
     "SHO": '\\"',
@@ -41,15 +41,10 @@ symbols = dictionary({
     "E": ".",
 })
 
-final_dict = dictionary({
-    to_dict_key("-D"): "{^}",
-    Chord.empty(): "",
-}).cross_product(
-    symbols,
-    keys=combine_single_chords,
-).cross_product(
-    dictionary({to_dict_key("-T"): "{^}", Chord.empty(): ""}),
-    keys=combine_single_chords,
-).map(keys=combine_first_chord("-FRLG"))
+final_dict = (
+    system.toggle("-D", "{^}") *
+    symbols *
+    system.toggle("-T", "{^}")
+).map(keys=add("-FRLG"))
 
 final_dict.plover_dict_main(__name__, globals())

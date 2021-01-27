@@ -2,4 +2,4 @@
 
 These are the keyboard layouts (including the english sytem as refernce, and the unfinished vim theory):
 
-![layouts](/examples/layouts.png)
+![layouts](layouts.png)

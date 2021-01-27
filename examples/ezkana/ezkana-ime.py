@@ -1,5 +1,5 @@
 import os, sys
-path = os.environ["HOME"] + '/.local/share/plover'
+path = os.path.dirname(os.path.abspath(__file__))
 if path not in sys.path: sys.path.append(path)
 
 from ezkana import final_ime

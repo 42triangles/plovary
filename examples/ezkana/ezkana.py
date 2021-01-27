@@ -113,7 +113,11 @@ def handle_ime() -> ESCDict:
             else (
                 "-"
                 if symbol == "--"
-                else symbol.replace(" ", "")
+                else (
+                    "ly" + symbol[1]
+                    if symbol in ["la", "lu", "lo"]
+                    else symbol.replace(" ", "")
+                )
             )
         )
 

@@ -811,6 +811,7 @@ class Dictionary(Generic[K, V]):
     # * `Chord.combine` (default) for single chords
     # * `concat` for chord tuples
     #   (treats chords as chord tuples with one element)
+    # * `to_tuple`
     # Suggested value combiners:
     # * `concat` (default)
     # * `to_tuple`

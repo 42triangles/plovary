@@ -93,7 +93,9 @@ class System(object):
     sys_overlay_replacements: ClassVar[Dict[str, List[str]]] = {}
     sys_mandatory_replacements: ClassVar[Dict[str, List[str]]] = {}
     sys_layout: ClassVar[Optional[List[LayoutBox]]] = None
+    sys_layout_unused: ClassVar[List[str]] = []
     sys_parse_mandatory_replacements: ClassVar[bool] = True
+    sys_always_pressed: ClassVar[List[str]] = []
 
     name: Optional[str]
 
@@ -110,8 +112,11 @@ class System(object):
     combining_keys: List[str]
 
     layout: Optional[List[LayoutBox]]
+    layout_unused: List[str]
 
     parse_mandatory_replacements: bool
+
+    always_pressed: List[str]
 
     # Optional replacements are only parsed, not emitted in outputs. This is
     # to allow users to use "pseudo steno" to write out their chords.
@@ -148,7 +153,9 @@ class System(object):
         overlay_replacements: Optional[Dict[str, List[str]]]=None,
         mandatory_replacements: Optional[Dict[str, List[str]]]=None,
         layout: Optional[List[LayoutBox]]=None,
+        layout_unused: Optional[List[str]]=None,
         parse_mandatory_replacements: Optional[bool]=None,
+        always_pressed: Optional[List[str]]=None,
     ) -> None:
         self.name = unwrap_optional_or(name, self.sys_name)
         self.key_order = unwrap_optional_or(key_order, self.sys_key_order)
@@ -172,10 +179,21 @@ class System(object):
             self.sys_mandatory_replacements
         )
         self.layout = unwrap_optional_or(layout, self.sys_layout)
+        self.layout_unused = (
+            unwrap_optional_or(layout_unused, self.sys_layout_unused)
+        )
         self.parse_mandatory_replacements = unwrap_optional_or(
             parse_mandatory_replacements,
             self.sys_parse_mandatory_replacements
         )
+        self.always_pressed = (
+            unwrap_optional_or(always_pressed, self.sys_always_pressed)
+        )
+        self.combining_keys += [
+            i
+            for i in self.always_pressed
+            if i not in self.combining_keys
+        ]
 
         all_replacement_dicts = (
             self.optional_replacements,
@@ -327,7 +345,7 @@ class System(object):
         self: SystemT,
         keys: Iterable[str]
     ) -> 'Chord[SystemT]':
-        return Chord(self, keys)
+        return Chord(self, chain(keys, self.always_pressed))
 
     def chord(self: SystemT, *keys: str) -> 'Chord[SystemT]':
         return self.chord_of_real_keys(
@@ -489,8 +507,28 @@ class System(object):
             raise ValueError("The system {self!r} doesn't have a visual layout")
 
         def label(box: LayoutBox, constant: Callable[[ConstantKey], T]) -> Union[str, T]:
-            # This will soon do something else instead
-            return box.key
+            if box.key in self.layout_unused:
+                return constant(ConstantKey.UNUSED)
+
+            if box.key in self.always_pressed:
+                return constant(ConstantKey.PRESSED)
+
+            matching_overlay_keys = [
+                k
+                for k, v in self.overlay_replacements.items()
+                if v == [box.key]
+            ]
+
+            if len(matching_overlay_keys) > 2:
+                warn(
+                    f"There are multiple overlay keys matching {i.key!r}: " +
+                    f"{matching_overlay_keys!r}"
+                )
+
+            if matching_overlay_keys:
+                return matching_overlay_keys[0]
+            else:
+                return box.key
 
         column_widths = [
             max(

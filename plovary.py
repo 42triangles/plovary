@@ -90,8 +90,10 @@ class System(object):
     sys_unordered_keys: ClassVar[List[str]] = []
     sys_combining_keys: ClassVar[List[str]] = []
     sys_optional_replacements: ClassVar[Dict[str, List[str]]] = {}
+    sys_overlay_replacements: ClassVar[Dict[str, List[str]]] = {}
     sys_mandatory_replacements: ClassVar[Dict[str, List[str]]] = {}
     sys_layout: ClassVar[Optional[List[LayoutBox]]] = None
+    sys_parse_mandatory_replacements: ClassVar[bool] = True
 
     name: Optional[str]
 
@@ -109,15 +111,23 @@ class System(object):
 
     layout: Optional[List[LayoutBox]]
 
+    parse_mandatory_replacements: bool
+
     # Optional replacements are only parsed, not emitted in outputs. This is
     # to allow users to use "pseudo steno" to write out their chords.
     optional_replacements: Dict[str, List[str]]
+    # Overlay replacements are parsed and emitted in suggestion outputs & debug
+    # info. These are meant for systems that are only mapped onto other systems.
+    overlay_replacements: Dict[str, List[str]]
     # Mandatory replacements are not only parsed, but also emitted in outputs.
     # Their order is depending on that of their first ordered key.
     # Not that hyphen emitting is decided based on the base keys; as such this
     # can act as a middle key when emitted if it contains a middle key, but it
     # *cannot* act as such by only having keys on both sides.
     mandatory_replacements: Dict[str, List[str]]
+
+    # Only contains parsed replacements
+    combined_replacements: Dict[str, List[str]]
 
     left_pseudo_keys: List[str]
     left_middle_pseudo_keys: List[str]
@@ -135,8 +145,10 @@ class System(object):
         unordered_keys: Optional[List[str]]=None,
         combining_keys: Optional[List[str]]=None,
         optional_replacements: Optional[Dict[str, List[str]]]=None,
+        overlay_replacements: Optional[Dict[str, List[str]]]=None,
         mandatory_replacements: Optional[Dict[str, List[str]]]=None,
         layout: Optional[List[LayoutBox]]=None,
+        parse_mandatory_replacements: Optional[bool]=None,
     ) -> None:
         self.name = unwrap_optional_or(name, self.sys_name)
         self.key_order = unwrap_optional_or(key_order, self.sys_key_order)
@@ -151,11 +163,42 @@ class System(object):
             optional_replacements,
             self.sys_optional_replacements
         )
+        self.overlay_replacements = unwrap_optional_or(
+            overlay_replacements,
+            self.sys_overlay_replacements
+        )
         self.mandatory_replacements = unwrap_optional_or(
             mandatory_replacements,
             self.sys_mandatory_replacements
         )
         self.layout = unwrap_optional_or(layout, self.sys_layout)
+        self.parse_mandatory_replacements = unwrap_optional_or(
+            parse_mandatory_replacements,
+            self.sys_parse_mandatory_replacements
+        )
+
+        all_replacement_dicts = (
+            self.optional_replacements,
+            self.overlay_replacements,
+            self.mandatory_replacements
+        )
+        self.combined_replacements = {}
+        for i in all_replacement_dicts:
+            for k, v in i.items():
+                if k not in self.combined_replacements:
+                    self.assert_real_keys_ordered(*v)
+                    self.combined_replacements[k] = v
+                else:
+                    if (
+                        self.parse_mandatory_replacements and
+                        i is not self.mandatory_replacements
+                    ):
+                        raise ValueError(
+                            f"The replacement keys defined in " +
+                            f"{self.optional_replacements!r}, " +
+                            f"{self.overlay_replacements!r} and " +
+                            f"{self.mandatory_replacements!r} overlap"
+                        )
 
         self.left_keys = [i for i in self.all_keys if i.endswith("-")]
         self.right_keys = [i for i in self.all_keys if i.startswith("-")]
@@ -169,14 +212,9 @@ class System(object):
         self.right_middle_keys = middle_keys_and_hyphen[hyphen_idx + 1:]
         self.middle_keys = self.left_middle_keys + self.right_middle_keys
 
-        for i in (self.optional_replacements, self.mandatory_replacements):
-            for j in i.values():
-                self.assert_real_keys_ordered(*j)
-
-        replacements = [
+        ordered_replacements = [
             i
-            for i in list(self.optional_replacements.keys()) +
-                list(self.mandatory_replacements.keys())
+            for i in self.combined_replacements.keys()
             if not self.key_unordered(i)
         ]
 
@@ -184,7 +222,7 @@ class System(object):
             base: List[str],
             predicate: Callable[[str], bool]
         ) -> List[str]:
-            out = base + [i for i in replacements if predicate(i)]
+            out = base + [i for i in ordered_replacements if predicate(i)]
             out.sort(key=self.key_index)
             return out
 
@@ -253,10 +291,7 @@ class System(object):
     def assert_key(self, *keys: str) -> None:
         for key in keys:
             is_real_key = key in self.all_keys 
-            is_pseudo_key = (
-                key in self.optional_replacements or
-                key in self.mandatory_replacements
-            )
+            is_pseudo_key = key in self.combined_replacements
             if not is_real_key and not is_pseudo_key:
                 raise ValueError(
                     f"{key!r} is not a valid pseudo key in {self!r}"
@@ -266,10 +301,8 @@ class System(object):
         self.assert_key(key)
         if key in self.all_keys:
             return [key]
-        elif key in self.optional_replacements:
-            return self.optional_replacements[key]
         else:
-            return self.mandatory_replacements[key]
+            return self.combined_replacements[key]
 
     def key_unordered(self, key: str) -> bool:
         return all(
@@ -312,13 +345,28 @@ class System(object):
     def single_key(self: SystemT, key: str) -> 'Chord[SystemT]':
         return self.chord(*self.expand_key(key))
 
-    def parse(self: SystemT, chord: str) -> 'Chord[SystemT]':
+    def parse(
+        self: SystemT,
+        chord: str,
+        *,
+        force_parse_mandatory_replacements: bool=False
+    ) -> 'Chord[SystemT]':
         left = chord
         out: List[str] = []
 
         def try_consume_one(pseudo_key: str) -> bool:
             nonlocal left
             nonlocal out
+
+            is_real_key = pseudo_key in self.all_keys
+            is_allowed_pseudo = (
+                pseudo_key in self.optional_replacements or
+                pseudo_key in self.overlay_replacements or
+                self.parse_mandatory_replacements or
+                force_parse_mandatory_replacements
+            )
+            if not is_real_key and not is_allowed_pseudo:
+                return False
 
             without_hyphen = pseudo_key.replace("-", "")
             if left.startswith(without_hyphen):
@@ -332,8 +380,7 @@ class System(object):
             self.unordered_keys +
             [
                 i
-                for i in list(self.optional_replacements.keys()) +
-                    list(self.mandatory_replacements.keys())
+                for i in self.combined_replacements.keys()
                 if self.key_unordered(i)
             ]
         )
@@ -546,6 +593,7 @@ class System(object):
                 f"System({self.key_order!r}, " +
                 f"unordered_keys={self.unordered_keys!r}, " + 
                 f"optional_replacements={self.optional_replacements!r}, " + 
+                f"overlay_replacements={self.overlay_replacements!r}, " + 
                 f"mandatory_replacements={self.mandatory_replacements!r}, " +
                 f"layout={self.layout!r})"
             )
@@ -605,7 +653,7 @@ class Chord(Generic[SystemT]):
 
         outputs.sort(
             key=lambda x:
-                self.system.real_key_index(x)
+                self.system.key_index(x)
                 if x != "-"
                 else self.system.key_order.index("-")
         )
@@ -667,11 +715,15 @@ class Chord(Generic[SystemT]):
     def plover_str(self) -> str:
         return self._to_str(self.system.mandatory_replacements)
 
+    @property
+    def no_replacements_str(self) -> str:
+        return self._to_str()
+
     def __repr__(self) -> str:
         return f"Chord({self.system!r}, {self})"
 
     def __str__(self) -> str:
-        return self._to_str()
+        return self._to_str(self.system.overlay_replacements)
 
     def __contains__(self, item: Union['Chord[SystemT]', str]) -> bool:
         if isinstance(item, str):
@@ -1056,7 +1108,12 @@ class Dictionary(Generic[K, V]):
         """
 
         try:
-            return self[tuple(system.parse(i) for i in key)]
+            return self[
+                tuple(
+                    system.parse(i, force_parse_mandatory_replacements=True)
+                    for i in key
+                )
+            ]
         except ValueError as e:
             print(e, file=sys.stderr)
             raise KeyError
@@ -1069,7 +1126,7 @@ class Dictionary(Generic[K, V]):
         output: str
     ) -> List[Tuple[str, ...]]:
         return [
-            tuple(j.plover_str for j in to_multi_chord(i))
+            tuple(str(j) for j in to_multi_chord(i))
             for i in self.keys_for(output)
         ]
 

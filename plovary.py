@@ -544,10 +544,10 @@ class System(object):
         else:
             return (
                 f"System({self.key_order!r}, " +
-                "unordered_keys={self.unordered_keys!r}, " + 
-                "optional_replacements={self.optional_replacements!r}, " + 
-                "mandatory_replacements={self.mandatory_replacements!r}, " +
-                "layout={self.layout!r})"
+                f"unordered_keys={self.unordered_keys!r}, " + 
+                f"optional_replacements={self.optional_replacements!r}, " + 
+                f"mandatory_replacements={self.mandatory_replacements!r}, " +
+                f"layout={self.layout!r})"
             )
 
     def __eq__(self, other: object) -> bool:

@@ -1257,8 +1257,7 @@ class Dictionary(Generic[K, V]):
         mod_globals["LONGEST_KEY"] = self.longest_key()
         # We have to use lambdas here, otherwise it doesn't work for some reason
         try:
-            key = next(i for i in self.keys() if i != ())
-            system = key.system if isinstance(key, Chord) else key[0].system
+            system = self.inferred_system()
             mod_globals["lookup"] = (
                 lambda x: self.plover_lookup(x, system=system)
             )

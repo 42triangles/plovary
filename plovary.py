@@ -68,6 +68,19 @@ def is_sorted(iterable: Iterable[int]) -> bool:
     return all(a <= b for a, b in sliding_window(iterable, size=2))
 
 
+class LayoutBox(NamedTuple):
+    key: str
+    x: int
+    y: int
+    w: int = 1
+    h: int = 1
+
+
+class ConstantKey(Enum):
+    UNUSED = 0
+    PRESSED = 1
+
+
 SystemT = TypeVar("SystemT", bound='System')
 
 
@@ -78,6 +91,7 @@ class System(object):
     sys_combining_keys: ClassVar[List[str]] = []
     sys_optional_replacements: ClassVar[Dict[str, List[str]]] = {}
     sys_mandatory_replacements: ClassVar[Dict[str, List[str]]] = {}
+    sys_layout: ClassVar[Optional[List[LayoutBox]]] = None
 
     name: Optional[str]
 
@@ -92,6 +106,8 @@ class System(object):
 
     unordered_keys: List[str]
     combining_keys: List[str]
+
+    layout: Optional[List[LayoutBox]]
 
     # Optional replacements are only parsed, not emitted in outputs. This is
     # to allow users to use "pseudo steno" to write out their chords.
@@ -120,6 +136,7 @@ class System(object):
         combining_keys: Optional[List[str]]=None,
         optional_replacements: Optional[Dict[str, List[str]]]=None,
         mandatory_replacements: Optional[Dict[str, List[str]]]=None,
+        layout: Optional[List[LayoutBox]]=None,
     ) -> None:
         self.name = unwrap_optional_or(name, self.sys_name)
         self.key_order = unwrap_optional_or(key_order, self.sys_key_order)
@@ -138,6 +155,7 @@ class System(object):
             mandatory_replacements,
             self.sys_mandatory_replacements
         )
+        self.layout = unwrap_optional_or(layout, self.sys_layout)
 
         self.left_keys = [i for i in self.all_keys if i.endswith("-")]
         self.right_keys = [i for i in self.all_keys if i.startswith("-")]
@@ -419,6 +437,107 @@ class System(object):
             self.empty_chord: default,
         })
 
+    def render_layout(self) -> str:
+        if self.layout is None:
+            raise ValueError("The system {self!r} doesn't have a visual layout")
+
+        def label(box: LayoutBox, constant: Callable[[ConstantKey], T]) -> Union[str, T]:
+            # This will soon do something else instead
+            return box.key
+
+        column_widths = [
+            max(
+                (
+                    # there are (i.w - 1) lines that aren't used
+                    # (x + y - 1) // y is the same as floor(x / y)
+                    (len(label(i, lambda _: " ")) - (i.w - 1) + i.w - 1) // i.w
+                    for i in self.layout if i.x <= x < i.x + i.w
+                ),
+                default=0
+            )
+            for x in range(max(i.x + i.w for i in self.layout))
+        ]
+
+        out = [
+            # |x|yy| → contents + all lines to the right of a cell + left line
+            [" "] * (sum(column_widths) + len(column_widths) + 1)
+            # contents are only one high
+            for y in range(max(i.y + i.h for i in self.layout) * 2 + 1)
+        ]
+
+        def combine_box_drawing(x: int, y: int, value: str) -> None:
+                # (up, right, down, left)
+                categorization = {
+                    " ": (False, False, False, False),
+                    "╴": (False, False, False, True),
+                    "╷": (False, False, True, False),
+                    "┐": (False, False, True, True),
+                    "╶": (False, True, False, False),
+                    "─": (False, True, False, True),
+                    "┌": (False, True, True, False),
+                    "┬": (False, True, True, True),
+                    "╵": (True, False, False, False),
+                    "┘": (True, False, False, True),
+                    "│": (True, False, True, False),
+                    "┤": (True, False, True, True),
+                    "└": (True, True, False, False),
+                    "┴": (True, True, False, True),
+                    "├": (True, True, True, False),
+                    "┼": (True, True, True, True),
+                }
+                reverse_categorization = {
+                    v: k
+                    for k, v in categorization.items()
+                }
+                
+                out[y][x] = reverse_categorization[
+                    cast(Tuple[bool, bool, bool, bool], tuple(
+                        l or r
+                        for l, r in zip(
+                            categorization[out[y][x]],
+                            categorization[value]
+                        )
+                    ))
+                ]
+
+        for i in self.layout:
+            # |x|THIS CELL → contents + all lines to the left of a cell
+            x_offset = sum(column_widths[:i.x]) + i.x
+            # Includes (i.w - 1) lines that aren't used
+            width = sum(column_widths[i.x:i.x+i.w]) + i.w - 1
+            x_end = x_offset + width + 1
+            y_offset = i.y * 2
+            y_end = y_offset + i.h * 2
+
+            # Corners
+            combine_box_drawing(x_offset, y_offset, "┌")
+            combine_box_drawing(x_offset, y_end, "└")
+            combine_box_drawing(x_end, y_offset, "┐")
+            combine_box_drawing(x_end, y_end, "┘")
+
+            # Horizontal lines
+            for line_y in [y_offset, y_end]:
+                for line_x in range(x_offset + 1, x_end):
+                    combine_box_drawing(line_x, line_y, "─")
+            # Vertical lines
+            for line_x in [x_offset, x_end]:
+                for line_y in range(y_offset + 1, y_end):
+                    combine_box_drawing(line_x, line_y, "│")
+
+            text = label(i, lambda x: x)
+            if isinstance(text, ConstantKey):
+                fill = "▓" if text == ConstantKey.PRESSED else "░"
+                for x in range(x_offset + 1, x_end):
+                    for y in range(y_offset + 1, y_end):
+                        out[y][x] = fill
+            else:
+                text_y = y_offset + i.h  # (i.h*2 - 1) // 2 → i.h
+                text_x = x_offset + 1 + (width - len(text)) // 2
+                for char_x, c in enumerate(text, text_x):
+                    out[text_y][char_x] = c
+
+        return "\n".join("".join(i) for i in out)
+
     def __repr__(self) -> str:
         if self.name is not None:
             return f"System(name={self.name!r})"
@@ -427,7 +546,8 @@ class System(object):
                 f"System({self.key_order!r}, " +
                 "unordered_keys={self.unordered_keys!r}, " + 
                 "optional_replacements={self.optional_replacements!r}, " + 
-                "mandatory_replacements={self.mandatory_replacements!r})"
+                "mandatory_replacements={self.mandatory_replacements!r}, " +
+                "layout={self.layout!r})"
             )
 
     def __eq__(self, other: object) -> bool:
@@ -1191,6 +1311,35 @@ class EnglishSystem(System):
         "-8": ["#", "-L"],
         "-9": ["#", "-T"],
     }
+
+    sys_layout = [
+        LayoutBox("#", x=0, y=0, w=10),
+
+        LayoutBox("S-", x=0, y=1, h=2),
+        LayoutBox("T-", x=1, y=1),
+        LayoutBox("K-", x=1, y=2),
+        LayoutBox("P-", x=2, y=1),
+        LayoutBox("W-", x=2, y=2),
+        LayoutBox("H-", x=3, y=1),
+        LayoutBox("R-", x=3, y=2),
+
+        LayoutBox("A", x=2, y=4),
+        LayoutBox("O", x=3, y=4),
+        LayoutBox("*", x=4, y=1, h=2),
+        LayoutBox("E", x=5, y=4),
+        LayoutBox("U", x=6, y=4),
+
+        LayoutBox("-F", x=5, y=1),
+        LayoutBox("-R", x=5, y=2),
+        LayoutBox("-P", x=6, y=1),
+        LayoutBox("-B", x=6, y=2),
+        LayoutBox("-L", x=7, y=1),
+        LayoutBox("-G", x=7, y=2),
+        LayoutBox("-T", x=8, y=1),
+        LayoutBox("-S", x=8, y=2),
+        LayoutBox("-D", x=9, y=1),
+        LayoutBox("-Z", x=9, y=2),
+    ]
 
 
 EnglishChord = Chord[EnglishSystem]

@@ -260,10 +260,11 @@ class System(object):
         )
 
     def key_index(self, key: str) -> int:
-        for i in self.expand_key(key):
+        expanded = self.expand_key(key)
+        for i in expanded:
             if i not in self.unordered_keys:
                 return self.real_key_index(i)
-        return self.real_key_index(self.expand_key(key)[0])
+        return self.real_key_index(expanded[0])
 
     def keys_ordered(self, *keys: str, ignore_unordered: bool=False) -> bool:
         self.assert_key(*keys)
@@ -288,7 +289,7 @@ class System(object):
         return self._empty_chord
 
     def single_real_key(self: SystemT, key: str) -> 'Chord[SystemT]':
-        return self.chord(key)
+        return self.chord_of_real_keys([key])
 
     def single_key(self: SystemT, key: str) -> 'Chord[SystemT]':
         return self.chord(*self.expand_key(key))
@@ -368,7 +369,7 @@ class System(object):
                 f"in {self!r}"
             )
 
-        return self.chord(*out)
+        return self.chord_of_real_keys(out)
     
     def parse_many(
         self: SystemT,
@@ -429,6 +430,9 @@ class System(object):
                 "mandatory_replacements={self.mandatory_replacements!r})"
             )
 
+    def __eq__(self, other: object) -> bool:
+        return NotImplemented
+
 
 class Chord(Generic[SystemT]):
     def __init__(self, system: SystemT, keys: Iterable[str]) -> None:
@@ -481,7 +485,7 @@ class Chord(Generic[SystemT]):
 
         outputs.sort(
             key=lambda x:
-                self.system.key_index(x)
+                self.system.real_key_index(x)
                 if x != "-"
                 else self.system.key_order.index("-")
         )
@@ -521,11 +525,11 @@ class Chord(Generic[SystemT]):
             raise ValueError(f"{self!r} is not a superset of {other!r}")
 
     def mask(self, other: 'Chord[SystemT]') -> 'Chord[SystemT]':
-        return self.system.chord(*(self.keys & other.keys))
+        return self.system.chord_of_real_keys(self.keys & other.keys)
 
     def lax_combine(self, other: 'Chord[SystemT]') -> 'Chord[SystemT]':
         self.assert_same_system(other)
-        return self.system.chord(*(self.keys | other.keys))
+        return self.system.chord_of_real_keys(self.keys | other.keys)
 
     def combine(self, other: 'Chord[SystemT]') -> 'Chord[SystemT]':
         self.assert_no_overlapping_noncombining(other)
@@ -533,7 +537,7 @@ class Chord(Generic[SystemT]):
 
     def lax_remove(self, other: 'Chord[SystemT]') -> 'Chord[SystemT]':
         self.assert_same_system(other)
-        return self.system.chord(*(self.keys - other.keys))
+        return self.system.chord_of_real_keys(self.keys - other.keys)
 
     def remove(self, other: 'Chord[SystemT]') -> 'Chord[SystemT]':
         self.assert_is_superset(other)

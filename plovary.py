@@ -343,13 +343,22 @@ class System(object):
 
     def chord_of_real_keys(
         self: SystemT,
-        keys: Iterable[str]
+        keys: Iterable[str],
+        include_always_pressed: bool=True,
     ) -> 'Chord[SystemT]':
-        return Chord(self, chain(keys, self.always_pressed))
+        return Chord(
+            self,
+            chain(keys, self.always_pressed if include_always_pressed else [])
+        )
 
-    def chord(self: SystemT, *keys: str) -> 'Chord[SystemT]':
+    def chord(
+        self: SystemT,
+        *keys: str,
+        include_always_pressed: bool=True
+    ) -> 'Chord[SystemT]':
         return self.chord_of_real_keys(
-            chain.from_iterable(self.expand_key(i) for i in keys)
+            chain.from_iterable(self.expand_key(i) for i in keys),
+            include_always_pressed=include_always_pressed,
         )
 
     # This is only a property to make it properly typeable :)
@@ -357,17 +366,34 @@ class System(object):
     def empty_chord(self: SystemT) -> 'Chord[SystemT]':
         return self._empty_chord
 
-    def single_real_key(self: SystemT, key: str) -> 'Chord[SystemT]':
-        return self.chord_of_real_keys([key])
+    def single_real_key(
+        self: SystemT,
+        key: str,
+        *,
+        include_always_pressed: bool=True,
+    ) -> 'Chord[SystemT]':
+        return self.chord_of_real_keys(
+            [key],
+            include_always_pressed=include_always_pressed
+        )
 
-    def single_key(self: SystemT, key: str) -> 'Chord[SystemT]':
-        return self.chord(*self.expand_key(key))
+    def single_key(
+        self: SystemT,
+        key: str,
+        *,
+        include_always_pressed: bool=True,
+    ) -> 'Chord[SystemT]':
+        return self.chord(
+            *self.expand_key(key),
+            include_always_pressed=include_always_pressed
+        )
 
     def parse(
         self: SystemT,
         chord: str,
         *,
-        force_parse_mandatory_replacements: bool=False
+        force_parse_mandatory_replacements: bool=False,
+        include_always_pressed: bool=True,
     ) -> 'Chord[SystemT]':
         left = chord
         out: List[str] = []
@@ -452,25 +478,67 @@ class System(object):
                 f"in {self!r}"
             )
 
-        return self.chord_of_real_keys(out)
+        return self.chord_of_real_keys(
+            out,
+            include_always_pressed=include_always_pressed
+        )
     
     def parse_many(
         self: SystemT,
-        sequence: str
+        sequence: str,
+        *,
+        force_parse_mandatory_replacements: bool=False,
+        include_always_pressed: bool=True,
     ) -> Tuple['Chord[SystemT]', ...]:
-        return tuple(self.parse(i) for i in sequence.split("/"))
+        return tuple(
+            self.parse(
+                i,
+                force_parse_mandatory_replacements=
+                    force_parse_mandatory_replacements,
+                include_always_pressed=include_always_pressed,
+            )
+            for i in sequence.split("/")
+        )
 
     def parsed_single_dict(
         self: SystemT,
-        dict_: Dict[str, T]
+        dict_: Dict[str, T],
+        *,
+        force_parse_mandatory_replacements: bool=False,
+        include_always_pressed: bool=True,
     ) -> 'Dictionary[Chord[SystemT], T]':
-        return Dictionary((self.parse(k), v) for k, v in dict_.items())
+        return Dictionary(
+            (
+                self.parse(
+                    k,
+                    force_parse_mandatory_replacements=
+                        force_parse_mandatory_replacements,
+                    include_always_pressed=include_always_pressed
+                ),
+                v
+            )
+            for k, v in dict_.items()
+        )
 
     def parsed_seq_dict(
         self: SystemT,
-        dict_: Dict[str, T]
+        dict_: Dict[str, T],
+        *,
+        force_parse_mandatory_replacements: bool=False,
+        include_always_pressed: bool=True,
     ) -> 'Dictionary[Tuple[Chord[SystemT], ...], T]':
-        return Dictionary((self.parse_many(k), v) for k, v in dict_.items())
+        return Dictionary(
+            (
+                self.parse_many(
+                    k,
+                    force_parse_mandatory_replacements=
+                        force_parse_mandatory_replacements,
+                    include_always_pressed=include_always_pressed
+                ),
+                v
+            )
+            for k, v in dict_.items()
+        )
 
     @overload
     def toggle(
@@ -1155,7 +1223,11 @@ class Dictionary(Generic[K, V]):
         try:
             return self[
                 tuple(
-                    system.parse(i, force_parse_mandatory_replacements=True)
+                    system.parse(
+                        i,
+                        force_parse_mandatory_replacements=True,
+                        include_always_pressed=False
+                    )
                     for i in key
                 )
             ]

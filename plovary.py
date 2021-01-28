@@ -925,6 +925,27 @@ class Dictionary(Generic[K, V]):
     def keys_for(self, value: V) -> List[K]:
         return [k for k, v in self.dict.items() if v == value]
 
+    def inferred_system(
+        self: Union[
+            'Dictionary[Chord[SystemT], V]',
+            'Dictionary[Tuple[Chord[SystemT], ...], V]'
+        ]
+    ) -> SystemT:
+        """
+        Limitation: the dictionary cannot be empty, otherwise
+        the system cannot be inferred
+        """
+        try:
+            return next(
+                i[0].system if isinstance(i, tuple) else i.system
+                for i in self.keys()
+                if i != ()
+            )
+        except StopIteration:
+            raise ValueError(
+                "Cannot infer the system of an empty dictionary"
+            )
+
     @overload
     def with_empty_chord(
         self: 'Dictionary[Chord[SystemT], V]',
@@ -946,23 +967,9 @@ class Dictionary(Generic[K, V]):
         system: Optional[SystemT]=None,
     ) -> 'Dictionary[Chord[SystemT], V]':
         """
-        Limitation: the dictionary cannot be empty, otherwise
-        the system cannot be inferred
+        Do note the limitations of `inferred_system`
         """
-        inferred_system: SystemT
-        if system is not None:
-            inferred_system = system
-        else:
-            try:
-                inferred_system = next(
-                    i.system
-                    for i in self.keys()
-                )
-            except StopIteration:
-                raise ValueError(
-                    "Cannot infer the system of an empty " +
-                    "dictionary"
-                )
+        inferred_system = self.inferred_system() if system is None else system
         return self + Dictionary({
             inferred_system.empty_chord: default
         })
@@ -1163,6 +1170,10 @@ class Dictionary(Generic[K, V]):
             import sys
             if "--debug" in sys.argv:
                 print(self)
+            elif "--show-system" in sys.argv:
+                # Needed to make `mypy` happy. I have *no* clue why.
+                inferred_system: SystemT = self.inferred_system()
+                print(inferred_system.render_layout())
             else:
                 self.print_as_plover_json_dict()
         else:

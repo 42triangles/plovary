@@ -24,6 +24,8 @@ system = EnglishSystem(
         "()-": ["T-", "K-"],
         "~-": ["P-", "W-"],
     },
+    layout_unused=["#", "-P", "-B", "-S", "-Z"],
+    always_pressed=["-F", "-R", "-L", "-G"],
     parse_mandatory_replacements=False,
 )
 
@@ -68,6 +70,6 @@ final_dict = (
     system.toggle("-⇠", "{^}") *
     symbols *
     system.toggle("-⇢", "{^}")
-).map(keys=add("-FRLG"))
+)
 
 final_dict.plover_dict_main(__name__, globals())

@@ -1,7 +1,3 @@
-import os, sys
-path = os.environ["HOME"] + '/.local/share/plover'
-if path not in sys.path: sys.path.append(path)
-
 from plovary import *
 
 system = EnglishSystem(

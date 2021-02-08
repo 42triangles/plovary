@@ -345,6 +345,11 @@ other_commands = system.parsed_single_dict({
     "m-↓": (1, "u"),  # undo
     "m-↑": (1, "{#Control_L(r)}"),  # redo
 
+    "m-l": (1, "J"),  # join lines ("modify line")
+
+    "i-l↑": (1, "O"),  # insert line above
+    "i-l↓": (1, "o"),  # insert line below
+
     "im": insert(0, ""),  # exit this dictionary
 })
 

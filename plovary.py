@@ -229,7 +229,7 @@ class System(object):
         middle_keys_and_hyphen = [
             i
             for i in self.key_order
-            if "-" not in i or i == "-" and i not in self.unordered_keys
+            if ("-" not in i or i == "-") and i not in self.unordered_keys
         ]
         hyphen_idx = middle_keys_and_hyphen.index("-")
         self.left_middle_keys = middle_keys_and_hyphen[:hyphen_idx]

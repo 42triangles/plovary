@@ -36,6 +36,12 @@ __all__ = [
 
 write_warnings: bool = True  # Set this to false to disable warnings on stderr
 
+# Set this to false to disable the steno order warning for pseudo keys:
+warn_steno_order: bool = True
+warn_matching_overlay_keys: bool = True
+warn_overlapping_dict_entries: bool = True
+warn_missing_keys_in_dict_sub: bool = True
+
 
 def warn(s: str) -> None:
     if write_warnings:
@@ -472,7 +478,7 @@ class System(object):
                 f"The chord {chord!r} is not valid{info} in {self!r}"
             )
 
-        if not self.real_keys_ordered(*out):
+        if warn_steno_order and not self.real_keys_ordered(*out):
             warn(
                 f"Some pseudo keys might not be in steno order in {chord!r} " +
                 f"in {self!r}"
@@ -587,7 +593,7 @@ class System(object):
                 if v == [box.key]
             ]
 
-            if len(matching_overlay_keys) > 2:
+            if warn_matching_overlay_keys and len(matching_overlay_keys) > 2:
                 warn(
                     f"There are multiple overlay keys matching {i.key!r}: " +
                     f"{matching_overlay_keys!r}"
@@ -1011,11 +1017,13 @@ class Dictionary(Generic[K, V]):
         else:
             self.dict = {}
             for k, v in iterable_or_dict:
-                if k in self.dict:
-                    warn(
-                        f"The key {k!r} is present more than once in " +
-                        f"{self.dict!r}"
-                    )
+                if warn_overlapping_dict_entries:
+                    if k in self.dict and self.dict[k] != v:
+                        warn(
+                            f"The key {k!r} is present more than once while " +
+                            f"creating a dictionary, once with the value " +
+                            f"{self.dict[k]!r} and once with {v!r}."
+                        )
 
                 self.dict[k] = v
 
@@ -1349,8 +1357,9 @@ class Dictionary(Generic[K, V]):
     def __sub__(self, other: Iterable[K]) -> 'Dictionary[K, V]':
         if hasattr(other, "__iter__"):
             other = list(other)
-            if not all(k in self for k in other):
-                warn(f"Not all keys of {other!r} are present in {self!r}")
+            if warn_missing_keys_in_dict_sub:
+                if not all(k in self for k in other):
+                    warn(f"Not all keys of {other!r} are present in {self!r}")
             return Dictionary((k, v) for k, v in self if k not in other)
         else:
             return NotImplemented

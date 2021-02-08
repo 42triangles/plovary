@@ -172,8 +172,6 @@ motions = system.parsed_single_dict({
     "elv": (0, "g$"),
     "elvs": (0, "g$"),
 
-    "-l": (1, "gM"),  # go to percentage of line
-
     "-l↓s": (1, "+"),  # go lines up and to first non-blank
     "-l↑s": (1, "-"),  # go lines down and to first non-blank
 
@@ -307,6 +305,7 @@ marks = system.parsed_single_dict({
 })
 
 other_commands = system.parsed_single_dict({
+    "-l": (1, "gM"),  # go to percentage of line
     "*l": (1, "|"),  # go to screen column
 
     "*(file)": (1, "%"),  # go to percentage of file
@@ -418,7 +417,16 @@ def add_into_insert(value: str) -> str:
         return value
 
 final_dict = (
-    (commands_with_motion * combining_right).map(values=add_into_insert) +
+    (
+        commands_with_motion * combining_right +
+        add_numbered_versions(
+            commands_with_motion.map(
+                keys=add("-l"),
+                values=lambda x: (1, x + x[-1] if x[0] != "z" else x * 2)
+            ),
+            keep_one=False
+        )
+    ).map(values=add_into_insert) +
     commands_with_motion * command_motion_kinds.with_empty_chord() +
     add_numbered_versions(motions, keep_one=True) +
     text_objects +

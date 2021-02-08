@@ -344,6 +344,8 @@ other_commands = system.parsed_single_dict({
 
     "m-↓": (1, "u"),  # undo
     "m-↑": (1, "{#Control_L(r)}"),  # redo
+
+    "im": insert(0, ""),  # exit this dictionary
 })
 
 registers = (

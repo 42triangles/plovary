@@ -87,7 +87,7 @@ system = EnglishSystem(
         # binding though)
         "-(paren)": ["-T", "-S", "-D", "-Z"],
     },
-    layout_unused=["P-", "T-", "A", "-P"],
+    layout_unused=["P-", "T-", "H-", "A", "-P"],
 )
 
 

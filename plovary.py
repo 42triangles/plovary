@@ -1428,10 +1428,10 @@ class Dictionary(Generic[K, V]):
             "".join(
                 "  {}: {!r},\n".format(
                     (
-                        k.plover_str
+                        str(k)
                         if isinstance(k, Chord)
                         else (
-                            "/".join(i.plover_str for i in k)
+                            "/".join(str(i) for i in k)
                             if isinstance(k, tuple) and
                                 all(isinstance(i, Chord) for i in k)
                             else repr(k)

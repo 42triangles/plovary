@@ -50,6 +50,7 @@ system = EnglishSystem(
         "m-": ["K-"],  # modify, macro
         "f-": ["W-"],  # format
         "y-": ["R-"],  # yank
+        "r": ["A"],  # read-only
         "p": ["O"],  # pipe
         "b": ["E"],  # beginning
         "e": ["U"],  # end
@@ -329,33 +330,31 @@ other_commands = system.parsed_single_dict({
     "mf-↑": (1, "{#Control_L(a)}"),  
     "mf-↓": (1, "{#Control_L(x)}"),  # decrease the amount, defaults to one
 
-    "-↓v": (1, "{#Control_L(f)}"),  # scroll screen down
-    "-↑v": (1, "{#Control_L(b)}"),  # scroll screen up
+    "r↓v": (1, "{#Control_L(f)}"),  # scroll screen down
+    "r↑v": (1, "{#Control_L(b)}"),  # scroll screen up
 
-    # These two are missing the `-v` to disambiguate them from the j/k movements
-    # that go by visuals when wrapping:
-    "-l↓": (1, "{#Control_L(d)}"),  # scroll lines down
-    "-l↑": (1, "{#Control_L(u)}"),  # scroll lines up
+    "rl↓v": (1, "{#Control_L(d)}"),  # scroll lines down
+    "rl↑v": (1, "{#Control_L(u)}"),  # scroll lines up
     # There is no binding of CTRL+E, since that can be done with 1-←↓→ too.
     # Similarly, CTRL+Y is missing too
     # scroll half screen down:
-    "c↓v": (0, ":set scroll=0{#Return}{#Control_L(d)}"),
-    "c↑v": (0, ":set scroll=0{#Return}{#Control_L(u)}"),
+    "rc↓v": (0, ":set scroll=0{#Return}{#Control_L(d)}"),
+    "rc↑v": (0, ":set scroll=0{#Return}{#Control_L(u)}"),
 
     # redraw screen, put line as the first line, keep column:
     "(cursor)b(block)v": (0, "zt"),
     "(cursor)*b(block)v": (0, "z{#Return}"),  # same, don't keep column
     "(cursor)c(block)↑v": (0, "zz"),  # keep column, redraw & put line as center
     "(cursor)be(block)↑v": (0, "z."),  # same, don't keep column
-    "(cursor)e(block)v": (0, "z-"),  # keep column, redraw & put line as last line
+    "(cursor)e(block)v": (0, "z-"),  # keep column, redraw & put line as last
     "(cursor)*e(block)v": (0, "zb"),  # same, don't keep column
 
-    "-←v": (1, "zl"),  # scroll left
-    "-v→": (1, "zh"),  # scroll right
-    "c←v": (1, "zL"),  # scroll left by half screens
-    "cv→": (1, "zH"),  # scroll right by half screens
-    "(cursor)-elv": (1, "zs"),  # scroll the cursor into the first column
-    "(cursor)-blv": (1, "ze"),  # scroll the cursor into the last column
+    "r←v": (1, "zl"),  # scroll left
+    "rv→": (1, "zh"),  # scroll right
+    "rc←v": (1, "zL"),  # scroll left by half screens
+    "rcv→": (1, "zH"),  # scroll right by half screens
+    "(cursor)relv": (1, "zs"),  # scroll the cursor into the first column
+    "(cursor)rblv": (1, "ze"),  # scroll the cursor into the last column
 
     "i": insert(0, "i"),  # go into insert mode before cursor
     "ib": insert(0, "i"),
@@ -439,10 +438,7 @@ def add_into_insert(value: str) -> str:
     else:
         return value
 
-fixes = [
-    ("(cursor)-elv", "mfy-elv"),  # `>g$` doesn't make any sense anyway
-    ("(cursor)-blv", "mfy-blv"),  # `>g0` also doesn't make any sense
-]
+fixes = []
 
 assert all(system.parse(l) == system.parse(r) for l, r in fixes)
 

@@ -323,7 +323,7 @@ other_commands = system.parsed_single_dict({
     "lm": (0, ":changes{#Return}"),  # show change list
 
     # add the given amount to the number under the cursor (modify something
-    # formatted as a number by increasing it), defaults to one
+    # formatted as a number by increasing it), defaults to one:
     "mf-↑": (1, "{#Control_L(a)}"),  
     "mf-↓": (1, "{#Control_L(x)}"),  # decrease the amount, defaults to one
 
@@ -331,7 +331,8 @@ other_commands = system.parsed_single_dict({
     "-↓v": (1, "{#Control_L(f)}"),  # scroll screen down
 
     "-←↓→": (1, "{#Control_L(d)}"),  # scroll lines down
-    # scroll half screen down
+    # There is no binding of CTRL+E, since that can be done with 1-←↓→ too
+    # scroll half screen down:
     "c↓v": (0, ":set scroll=0{#Return}{#Control_L(d)}"),
 
     "i": insert(0, "i"),  # go into insert mode before cursor

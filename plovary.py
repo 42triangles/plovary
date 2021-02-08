@@ -548,7 +548,8 @@ class System(object):
 
     @overload
     def toggle(
-        self: SystemT, key: Union[str, 'Chord[SystemT]'],
+        self: SystemT,
+        key: Union[str, 'Chord[SystemT]'],
         value: T,
         *,
         default: T

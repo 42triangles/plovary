@@ -366,15 +366,15 @@ registers = (
     ) +
     # special registers except the default one and the removal ones:
     system.parsed_single_dict({
-        "yAOEU": "0",  # most recent yank
-        "iy": ".",  # last inserted
+        "AOEU": "0",  # most recent yank
+        "i": ".",  # last inserted
         # For the GUI:
-        "y-FPLTD": "*",
-        "y-RBGSZ": "+",
+        "-FPLTD": "*",
+        "-RBGSZ": "+",
     }) +
     # most recent removals:
-    (convert_system(single_digit_only) - [system.chord("0")]).map(keys=add("y"))
-).map(values=prefix("\""))
+    (convert_system(single_digit_only) - [system.chord("0")])
+).map(keys=add("y"), values=prefix("\""))
 
 def add_numbered_versions(
     d: Dictionary[Chord[EnglishSystem], Tuple[int, str]],

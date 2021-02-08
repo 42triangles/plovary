@@ -327,8 +327,8 @@ other_commands = system.parsed_single_dict({
     "mf-↑": (1, "{#Control_L(a)}"),  
     "mf-↓": (1, "{#Control_L(x)}"),  # decrease the amount, defaults to one
 
-    "-↑v": (1, "{#Control_L(b)}"),  # scroll screen up
     "-↓v": (1, "{#Control_L(f)}"),  # scroll screen down
+    "-↑v": (1, "{#Control_L(b)}"),  # scroll screen up
 
     "-←↓→": (1, "{#Control_L(d)}"),  # scroll lines down
     # There is no binding of CTRL+E, since that can be done with 1-←↓→ too
@@ -347,8 +347,8 @@ other_commands = system.parsed_single_dict({
 
     "m-l": (1, "J"),  # join lines ("modify line")
 
-    "i-l↑": (1, "O"),  # insert line above
     "i-l↓": (1, "o"),  # insert line below
+    "i-l↑": (1, "O"),  # insert line above
 
     "im": insert(0, ""),  # exit this dictionary
 })

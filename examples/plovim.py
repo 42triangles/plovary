@@ -305,6 +305,8 @@ marks = system.parsed_single_dict({
 })
 
 other_commands = system.parsed_single_dict({
+    "-v": (0, "{#Control_L(l)}"),  # redraw screen
+
     "-l": (1, "gM"),  # go to percentage of line
     "*l": (1, "|"),  # go to screen column
 

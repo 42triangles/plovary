@@ -455,6 +455,10 @@ final_dict = (
                 values=lambda x: (1, x + x[-1] if x[0] != "z" else x * 2)
             ),
             keep_one=False
+        ) +
+        commands_with_motion.map(
+            keys=add("a(file)"),
+            values=surround("mzgg", "G`z"),
         ) -
         [system.parse(i) for i, _ in fixes]
     ).map(values=add_into_insert) +

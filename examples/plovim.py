@@ -51,6 +51,8 @@ system = EnglishSystem(
         "f-": ["W-"],  # format
         "y-": ["R-"],  # yank
         "r": ["A"],  # read-only
+        # (note: Motions that aren't caused secondarily aren't considered
+        # readonly)
         "p": ["O"],  # pipe
         "b": ["E"],  # beginning
         "e": ["U"],  # end
@@ -73,6 +75,8 @@ system = EnglishSystem(
         "a": ["E", "U"],
         # *be ⇒ centre:
         "c": ["*", "E", "U"],
+        # i←v→ ⇒ exhange (no real meaning behind this binding though)
+        "-x": ["-F", "-R", "-T", "-S"],
         # -←→ ⇒ line:
         "-l": ["-R", "-S"],
         # -←↓↑→ ⇒ block / file
@@ -275,6 +279,9 @@ with_character = system.parsed_single_dict({
     "-il↓f": "T",
     # find character in line after cursor but stop one before:
     "-ilf↑": "t",
+
+    "-x": "r",  # replace character
+    "-x↓": "gr",  # replace screen character (down only for disambiguation)
 })
 
 characters = (
@@ -307,6 +314,7 @@ marks = system.parsed_single_dict({
 
 other_commands = system.parsed_single_dict({
     "-v": (0, "{#Control_L(l)}"),  # redraw screen
+    "rv": (0, "{#Control_L(l)}"),
 
     "-l": (1, "gM"),  # go to percentage of line
     "*l": (1, "|"),  # go to screen column
@@ -324,11 +332,6 @@ other_commands = system.parsed_single_dict({
     "lm*↑": (1, "2g;"),  # go back in change list twice
     "lm-↑": (0, "g,"),  # go forth in change list
     "lm": (0, ":changes{#Return}"),  # show change list
-
-    # add the given amount to the number under the cursor (modify something
-    # formatted as a number by increasing it), defaults to one:
-    "mf-↑": (1, "{#Control_L(a)}"),  
-    "mf-↓": (1, "{#Control_L(x)}"),  # decrease the amount, defaults to one
 
     "r↓v": (1, "{#Control_L(f)}"),  # scroll screen down
     "r↑v": (1, "{#Control_L(b)}"),  # scroll screen up
@@ -356,6 +359,45 @@ other_commands = system.parsed_single_dict({
     "(cursor)relv": (1, "zs"),  # scroll the cursor into the first column
     "(cursor)rblv": (1, "ze"),  # scroll the cursor into the last column
 
+    # `x` is not in here since it can be done with `dl` too
+    # `D` is `d$`
+    "m-l": (1, "J"),  # join lines ("modify line")
+    "m*l": (1, "gJ"),  # join lines, but without removing spaces
+    "im": (1, "R"),  # enter replace mode
+    "im*": (1, "gR"),  # enter visual replace mode
+    # `C` is `c$`
+    # `s` is `cl`
+    # `S` is `cc`
+
+    # `~` is `g~l`
+
+    # add the given amount to the number under the cursor (modify something
+    # formatted as a number by increasing it), defaults to one:
+    "mf-↑": (1, "{#Control_L(a)}"),  
+    "mf-↓": (1, "{#Control_L(x)}"),  # decrease the amount, defaults to one
+
+    "-xf": insert(0, ":s/"),  # substitute
+    "*xf": (0, "g&"),  # repeat last substitution
+
+    "y-v": (0, ":reg{#Return}"),  # show register contents
+
+    # `Y` is `yy`
+
+    "i-↑": (1, "P"),  # put text before cursor
+    "i-↓": (1, "p"),  # put text after cursor
+    # put text before cursor, but leave the cursor just before the new text:
+    "i*↑": (1, "P"),
+    # put text after cursor, but leave the cursor just after the new text:
+    "i*↓": (1, "p"),
+    # `:pu` and `:pu!` are very hard to map well. But if they worked just like
+    # p & P, I'd recommend `i*l` together with the direction.
+    # put text before cursor, using the indent of the current line:
+    "i-l↑": (1, "]P"),
+    # put text after cursor, using the indent of the current line:
+    "i-l↓": (1, "]p"),
+
+    "-f": insert(0, "/"),  # search
+
     "i": insert(0, "i"),  # go into insert mode before cursor
     "ib": insert(0, "i"),
     "i*": insert(0, "a"),  # go into insert mode after cursor
@@ -366,12 +408,10 @@ other_commands = system.parsed_single_dict({
     "m-↓": (1, "u"),  # undo
     "m-↑": (1, "{#Control_L(r)}"),  # redo
 
-    "m-l": (1, "J"),  # join lines ("modify line")
-
     "i-l↓": (1, "o"),  # insert line below
     "i-l↑": (1, "O"),  # insert line above
 
-    "im": insert(0, ""),  # exit this dictionary
+    "STKPWHR": insert(0, ""),  # exit this dictionary
 })
 
 registers = (
@@ -438,7 +478,7 @@ def add_into_insert(value: str) -> str:
     else:
         return value
 
-fixes = []
+fixes: List[Tuple[str, str]] = []
 
 assert all(system.parse(l) == system.parse(r) for l, r in fixes)
 

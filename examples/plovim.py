@@ -404,6 +404,8 @@ other_commands = system.parsed_single_dict({
     "ie": insert(0, "a"),
 
     "m": insert(0, ":"),  # enter ex command
+    "m-l": insert(1, ":"),  # enter ex command for some number of lines
+    # `m-l` alone is bound to `:.` later
 
     "m-↓": (1, "u"),  # undo
     "m-↑": (1, "{#Control_L(r)}"),  # redo
@@ -503,7 +505,11 @@ final_dict = (
     text_objects +
     with_character * characters +
     with_mark * marks +
-    add_numbered_versions(other_commands, keep_one=True) +
+    (
+        add_numbered_versions(other_commands, keep_one=True) -
+        [system.parse("m-l")] +
+        system.parsed_single_dict({"m-l": ":."})
+    ) +
     registers +
     convert_system(numbers)
 ).map(values=surround("{^}", "{^}"))

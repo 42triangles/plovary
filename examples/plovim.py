@@ -396,6 +396,14 @@ other_commands = system.parsed_single_dict({
     # put text after cursor, using the indent of the current line:
     "i-l↓": (1, "]p"),
 
+    # *piping* through `diff` (which spots *modifications) → `mp` is diffing
+    "mpb↓f": (1, "[c"),  # go to start of previous difference
+    "mp↓f": (1, "[c"),
+    "mpbf↑": (1, "]c"),  # go to start of next difference
+    "mpf↑": (1, "]c"),
+    "mp←": (1, "do"),  # "pull" changes from another buffer
+    "mp→": (1, "dp"),  # "push" changes to another buffer
+
     "-f": insert(0, "/"),  # search
 
     "i": insert(0, "i"),  # go into insert mode before cursor
@@ -484,6 +492,11 @@ fixes: List[Tuple[str, str]] = []
 
 assert all(system.parse(l) == system.parse(r) for l, r in fixes)
 
+one_fixes: List[str] = [
+    "mp↓f",  # `1[c` and `gu8j` overlap otherwise
+    "mpf↑",  # `1]c` and `gu8k` overlap otherwise
+]
+
 final_dict = (
     (
         commands_with_motion * combining_right +
@@ -507,6 +520,7 @@ final_dict = (
     with_mark * marks +
     (
         add_numbered_versions(other_commands, keep_one=True) -
+        [system.parse(i) + system.parse("1") for i in one_fixes] -
         [system.parse("m-l")] +
         system.parsed_single_dict({"m-l": ":."})
     ) +

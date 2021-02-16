@@ -397,6 +397,18 @@ other_commands = system.parsed_single_dict({
     "i-l↓": (1, "]p"),
 
     # *piping* through `diff` (which spots *modifications) → `mp` is diffing
+    "mp(file)": (0, ":diffthis{#Return}"),  # add this file to the diffing
+    "m*p(file)": (0, ":diffoff{#Return}"),  # turn off diffing
+    "mp": insert(0, ":diffsplit{#Space}"),  # open a new window to diff with
+    # open it to the left:
+    "mp←": insert(0, ":leftabove vert diffsplit{#Space}"),
+    "mp↓": insert(0, ":belowright diffsplit{#Space}"),  # open it to the bottom
+    "mp↑": insert(0, ":leftabove diffsplit{#Space}"),  # open it to the top
+    # open it to the right:
+    "mp→": insert(0, ":belowright vert diffsplit{#Space}"),
+    "mpv": (0, ":diffupdate"),  # update diff
+    # patch the current file and open the patched version in a new buffer:
+    "m*p": insert(0, ":diffpatch{#Space}"),
     "mpb↓f": (1, "[c"),  # go to start of previous difference
     "mp↓f": (1, "[c"),
     "mpbf↑": (1, "]c"),  # go to start of next difference

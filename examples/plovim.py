@@ -326,7 +326,7 @@ other_commands = system.parsed_single_dict({
 
     "l(cursor)-↓": (0, "{#Control_L(o)}"),  # go back in the jump list
     "l(cursor)-↑": (0, "{#Control_L(i)}"),  # go forth in the jump list
-    "l(cursor)": (0, ":ju{#Return}"),  # show jump list
+    "l(cursor)": (0, ":jumps{#Return}"),  # show jump list
 
     "lm-↓": (0, "g;"),  # go back in change list
     "lm*↑": (1, "2g;"),  # go back in change list twice
@@ -379,7 +379,7 @@ other_commands = system.parsed_single_dict({
     "-xf": insert(0, ":s/"),  # substitute
     "*xf": (0, "g&"),  # repeat last substitution
 
-    "y-v": (0, ":reg{#Return}"),  # show register contents
+    "y-v": (0, ":registers{#Return}"),  # show register contents
 
     # `Y` is `yy`
 

@@ -1276,6 +1276,51 @@ class Dictionary(Generic[K, V]):
             mod_globals["lookup"] = only_throw
         mod_globals["reverse_lookup"] = lambda x: self.plover_reverse_lookup(x)
 
+    def run_stdio_dict(
+        self: Union[
+            'Dictionary[Chord[SystemT], str]',
+            'Dictionary[Tuple[Chord[SystemT], ...], str]'
+        ]
+    ) -> None:
+        import json
+
+        print(json.dumps({
+            "longest-key": self.longest_key(),
+            "untranslate": True
+        }))
+
+        try:
+            system: SystemT = self.inferred_system()
+        except StopIteration:
+            while True:
+                x = json.loads(input())
+                print(json.dumps({"seq": x["seq"]}))
+
+        while True:
+            x = json.loads(input())
+            if "translate" in x:
+                try:
+                    out = self.plover_lookup(
+                        tuple(x["translate"]),
+                        system=system
+                    )
+                    print(json.dumps({
+                        "seq": x["seq"],
+                        "translation": out
+                    }))
+                except KeyError:
+                    print(json.dumps({"seq": x["seq"]}))
+            elif "untranslate" in x:
+                out = self.plover_reverse_lookup(
+                    x["untranslate"]
+                )
+                print(json.dumps({
+                    "seq": x["seq"],
+                    "reverse-translation": out,
+                }))
+            else:
+                print(json.dumps({"seq": x["seq"]}))
+
     def plover_dict_main(
         self: Union[
             'Dictionary[Chord[SystemT], str]',
@@ -1292,6 +1337,8 @@ class Dictionary(Generic[K, V]):
                 # Needed to make `mypy` happy. I have *no* clue why.
                 inferred_system: SystemT = self.inferred_system()
                 print(inferred_system.render_layout())
+            elif "--stdio-dict" in sys.argv:
+                self.run_stdio_dict()
             else:
                 self.print_as_plover_json_dict()
         else:

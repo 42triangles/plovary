@@ -1,5 +1,6 @@
 from typing import *
 from plovary import *
+import os
 
 # "English Single Chord DICTionary"
 ESCDict = Dictionary[Chord[EnglishSystem], str]
@@ -216,3 +217,11 @@ def finalize(dictionary: ESCDict) -> ESCDict:
 
 final_ime = finalize(handle_ime())
 final_proper = finalize(handle_proper())
+
+if __name__ == "__main__":
+    if "EZKANA_MODE" in os.environ:
+        dictionary = {
+            "ime": final_ime,
+            "proper": final_proper,
+        }[os.environ["EZKANA_MODE"].lower()]
+        dictionary.plover_dict_main(__name__, globals())

@@ -87,6 +87,10 @@ class ConstantKey(Enum):
     PRESSED = 1
 
 
+class ChordParseError(ValueError):
+    pass
+
+
 SystemT = TypeVar("SystemT", bound='System')
 
 
@@ -474,7 +478,7 @@ class System(object):
             info = (
                 " (it may be missing a hyphen)" if hyphen_maybe_missing else ""
             )
-            raise ValueError(
+            raise ChordParseError(
                 f"The chord {chord!r} is not valid{info} in {self!r}"
             )
 

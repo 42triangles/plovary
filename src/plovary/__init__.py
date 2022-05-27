@@ -1286,9 +1286,6 @@ class Dictionary(Generic[K, V]):
             'Dictionary[Tuple[Chord[SystemT], ...], str]'
         ]
     ) -> None:
-        global write_warnings
-        write_warnings = False
-
         import json
 
         print(json.dumps({

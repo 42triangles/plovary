@@ -1314,9 +1314,7 @@ class Dictionary(Generic[K, V]):
                 except KeyError:
                     print(json.dumps({"seq": x["seq"]}))
             elif "untranslate" in x:
-                reverse_out = self.plover_reverse_lookup(
-                    x["untranslate"]
-                )
+                reverse_out = self.plover_reverse_lookup(x["untranslate"])
                 print(json.dumps({
                     "seq": x["seq"],
                     "reverse-translation": reverse_out,

@@ -1222,7 +1222,7 @@ class Dictionary(Generic[K, V]):
         ],
         key: Tuple[str, ...],
         *,
-        system: SystemT,
+        system: SystemT
     ) -> str:
         """
         This ignores any and all `ValueError`s due to invalid
@@ -1244,6 +1244,9 @@ class Dictionary(Generic[K, V]):
                     for i in key
                 )
             ]
+        except ChordParseError:
+            # This happens with *other* dictionaries that have overlays
+            raise KeyError
         except ValueError as e:
             print(e, file=sys.stderr)
             raise KeyError

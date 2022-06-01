@@ -1,2 +1,2 @@
-include **/*.py
-include **/py.typed
+include src/plovary/__init__.py
+include src/plovary/py.typed

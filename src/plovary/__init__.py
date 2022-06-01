@@ -261,12 +261,20 @@ class System(object):
         self.left_middle_pseudo_keys = pseudo_keys_where(
             self.left_middle_keys,
             lambda i:
-                "-" not in i and any(j in self.left_middle_keys for j in i)
+                "-" not in i
+                and any(
+                    j in self.left_middle_keys
+                    for j in self.combined_replacements[i]
+                )
         )
         self.right_middle_pseudo_keys = pseudo_keys_where(
             self.right_middle_keys,
             lambda i:
-                "-" not in i and not any(j in self.left_middle_keys for j in i)
+                "-" not in i
+                and not any(
+                    j in self.left_middle_keys
+                    for j in self.combined_replacements[i]
+                )
         )
         self.middle_pseudo_keys = (
             self.left_middle_pseudo_keys + self.right_middle_pseudo_keys
